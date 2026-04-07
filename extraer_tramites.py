@@ -187,8 +187,8 @@ async def ejecutar():
     alertas = []
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=False,
-            args=["--ignore-certificate-errors"]
+            headless=True,
+            args=["--ignore-certificate-errors", "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         )
         context = await browser.new_context(ignore_https_errors=True)
         page = await context.new_page()
