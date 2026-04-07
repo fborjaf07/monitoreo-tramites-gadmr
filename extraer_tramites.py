@@ -8,8 +8,9 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-USUARIO = "BORJAFF"
-CONTRASENA = "Amelia1010("
+import os
+USUARIO = os.environ.get("USUARIO", "tu_usuario")
+CONTRASENA = os.environ.get("CONTRASENA", "tu_contrasena")
 HORAS_ALERTA = 24
 ARCHIVO_ENTRADA = "tramites_entrada.xlsx"
 ARCHIVO_DASHBOARD = "dashboard_tramites.xlsx"
