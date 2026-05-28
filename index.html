@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trámites — Obras Públicas GADMR</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0F2044;
+  --navy2: #1A3260;
+  --blue: #185FA5;
+  --blue-light: #2E7DD1;
+  --gold: #C9980A;
+  --gold-light: #F0C040;
+  --red: #C0392B;
+  --red-light: #E74C3C;
+  --amber: #D68910;
+  --green: #1E8449;
+  --green-light: #27AE60;
+  --gray-50: #F8F9FB;
+  --gray-100: #EFF1F5;
+  --gray-200: #DDE1EA;
+  --gray-400: #9BA3B4;
+  --gray-600: #5A6478;
+  --gray-800: #2D3547;
+  --white: #FFFFFF;
+  --shadow: 0 2px 12px rgba(15,32,68,0.08);
+  --shadow-lg: 0 8px 32px rgba(15,32,68,0.14);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-800); font-size: 14px; min-height: 100vh; }
+
+/* HEADER */
+.header {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 16px rgba(15,32,68,0.25);
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.logo-badge {
+  background: var(--gold); color: var(--navy); font-weight: 700;
+  font-size: 11px; padding: 4px 10px; border-radius: 6px; letter-spacing: .04em;
+}
+.header-title { color: var(--white); font-size: 14px; font-weight: 600; opacity: .95; }
+.header-sub { color: rgba(255,255,255,.5); font-size: 11px; margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.sync-pill {
+  font-size: 11px; padding: 4px 12px; border-radius: 20px;
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.15); font-family: 'DM Mono', monospace;
+}
+.sync-pill.ok { background: rgba(30,132,73,.25); color: #6EE7A0; border-color: rgba(30,132,73,.4); }
+.sync-pill.err { background: rgba(192,57,43,.25); color: #F1948A; border-color: rgba(192,57,43,.4); }
+.clock { color: rgba(255,255,255,.5); font-size: 11px; font-family: 'DM Mono', monospace; }
+
+/* LAYOUT */
+.layout { display: flex; height: calc(100vh - 56px); }
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  background: var(--white); border-right: 1px solid var(--gray-200);
+  padding: 16px 0; overflow-y: auto;
+}
+.sidebar-section { padding: 0 12px; margin-bottom: 4px; }
+.sidebar-label { font-size: 10px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .08em; padding: 8px 8px 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--gray-600); font-size: 13px; font-weight: 500;
+  transition: all .15s; margin-bottom: 2px; border: none; background: none; width: 100%;
+}
+.nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
+.nav-item.active { background: #EBF3FC; color: var(--blue); font-weight: 600; }
+.nav-item .icon { width: 18px; text-align: center; font-size: 14px; }
+.nav-badge {
+  margin-left: auto; font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 10px; background: var(--gray-100); color: var(--gray-600);
+}
+.nav-badge.red { background: #FDECEA; color: var(--red); }
+.nav-badge.amber { background: #FEF3E2; color: var(--amber); }
+
+/* MAIN */
+.main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* MÉTRICAS */
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+.metric {
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.metric-label { font-size: 11px; color: var(--gray-400); font-weight: 500; margin-bottom: 2px; }
+.metric-val { font-size: 28px; font-weight: 700; line-height: 1; margin: 6px 0 8px; }
+.metric-note { font-size: 10px; color: var(--gray-400); }
+.metric.danger .metric-val { color: var(--red); }
+.metric.warning .metric-val { color: var(--amber); }
+.metric.success .metric-val { color: var(--green); }
+.metric.info .metric-val { color: var(--blue); }
+
+/* PANEL */
+.panel {
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.panel-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.panel-title { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+.panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+/* FILTERS */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-input, .filter-select {
+  font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200); background: var(--gray-50);
+  color: var(--gray-800); outline: none; font-family: 'DM Sans', sans-serif;
+}
+.filter-input:focus, .filter-select:focus { border-color: var(--blue); background: var(--white); }
+.filter-input { width: 200px; }
+.btn {
+  font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: var(--radius-sm);
+  border: none; cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif;
+}
+.btn-primary { background: var(--blue); color: var(--white); }
+.btn-primary:hover { background: var(--blue-light); }
+.btn-primary:disabled { opacity: .5; cursor: default; }
+.btn-ghost { background: var(--gray-100); color: var(--gray-600); }
+.btn-ghost:hover { background: var(--gray-200); }
+
+/* TABLE */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+th { font-size: 10px; font-weight: 700; color: var(--gray-400); padding: 10px 12px; text-align: left; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; color: var(--gray-800); }
+tr.clickable:hover td { background: var(--gray-50); cursor: pointer; }
+tr.expanded td { background: #F0F6FF; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+.badge-red { background: #FDECEA; color: #B71C1C; }
+.badge-amber { background: #FEF3E2; color: #7D4E00; }
+.badge-green { background: #E8F5E9; color: #1B5E20; }
+.badge-blue { background: #E3F2FD; color: #0D47A1; }
+.badge-purple { background: #F3E5F5; color: #4A148C; }
+.badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+/* DETAIL ROW */
+.detail-inner { padding: 16px 20px 20px 44px; background: #F7FAFF; border-top: 1px solid var(--gray-200); }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.dfield .dk { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.dfield .dv { font-size: 12px; font-weight: 500; color: var(--gray-800); }
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 11px; }
+.tl-item:last-child { border-bottom: none; }
+.tl-item.last { background: #EEF7EE; border-radius: 6px; padding: 8px 10px; margin-top: 4px; }
+.tl-item.alert-last { background: #FEF0EE; border-radius: 6px; padding: 8px 10px; margin-top: 4px; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-200); flex-shrink: 0; margin-top: 3px; }
+.tl-item.last .tl-dot { background: var(--green); }
+.tl-item.alert-last .tl-dot { background: var(--red); }
+.tl-fecha { color: var(--gray-400); min-width: 110px; font-family: 'DM Mono', monospace; }
+.tl-nombre { font-weight: 600; min-width: 150px; }
+.tl-cargo { color: var(--gray-400); flex: 1; min-width: 130px; }
+.tl-nota { color: var(--gray-600); font-style: italic; flex: 2; }
+.tl-env { color: var(--blue); font-weight: 600; }
+
+/* EXPAND ICON */
+.exp-btn { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--gray-200); background: var(--white); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--gray-400); cursor: pointer; font-weight: 700; }
+
+/* LINK */
+.tlink { color: var(--blue); font-weight: 700; text-decoration: none; font-family: 'DM Mono', monospace; font-size: 11px; }
+.tlink:hover { text-decoration: underline; }
+
+/* ALERT CARDS */
+.alert-card { border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; border: 1px solid; }
+.alert-card.critico { background: #FEF0EE; border-color: #FACAC4; }
+.alert-card.alerta { background: #FFFBF0; border-color: #F9E4A0; }
+.alert-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+
+/* CHAT PANEL */
+.chat-panel {
+  width: 360px; flex-shrink: 0;
+  background: var(--white); border-left: 1px solid var(--gray-200);
+  display: flex; flex-direction: column;
+}
+.chat-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--gray-100);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  display: flex; align-items: center; gap: 10px;
+}
+.chat-header-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--gold); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.chat-header-text .ctitle { font-size: 13px; font-weight: 700; color: var(--white); }
+.chat-header-text .csub { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 1px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 88%; }
+.chat-msg.user { align-self: flex-end; }
+.chat-msg.assistant { align-self: flex-start; }
+.msg-bubble {
+  padding: 9px 13px; border-radius: 12px; font-size: 12px; line-height: 1.55;
+}
+.chat-msg.user .msg-bubble { background: var(--blue); color: var(--white); border-bottom-right-radius: 3px; }
+.chat-msg.assistant .msg-bubble { background: var(--gray-100); color: var(--gray-800); border-bottom-left-radius: 3px; }
+.msg-time { font-size: 10px; color: var(--gray-400); margin-top: 3px; text-align: right; }
+.chat-msg.assistant .msg-time { text-align: left; }
+.chat-typing { display: flex; gap: 4px; align-items: center; padding: 10px 13px; background: var(--gray-100); border-radius: 12px; border-bottom-left-radius: 3px; width: fit-content; }
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-400); animation: typing 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typing { 0%,60%,100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
+.chat-input-area { padding: 12px; border-top: 1px solid var(--gray-100); }
+.chat-suggestions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.suggestion-btn {
+  font-size: 10px; padding: 4px 9px; border-radius: 20px;
+  border: 1px solid var(--gray-200); background: var(--gray-50);
+  color: var(--gray-600); cursor: pointer; transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.suggestion-btn:hover { background: var(--blue); color: var(--white); border-color: var(--blue); }
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input {
+  flex: 1; font-size: 12px; padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200); background: var(--gray-50);
+  outline: none; font-family: 'DM Sans', sans-serif; resize: none; max-height: 80px;
+}
+.chat-input:focus { border-color: var(--blue); background: var(--white); }
+.chat-send {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: var(--blue); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: var(--white);
+  flex-shrink: 0; transition: all .15s;
+}
+.chat-send:hover { background: var(--blue-light); }
+.chat-send:disabled { opacity: .4; cursor: default; }
+.chat-api-warn {
+  font-size: 11px; color: var(--amber); background: #FFFBF0;
+  border: 1px solid #F9E4A0; border-radius: var(--radius-sm);
+  padding: 8px 10px; margin-bottom: 8px; display: none;
+}
+
+/* EMPTY / LOADING */
+.empty { text-align: center; padding: 48px 24px; color: var(--gray-400); font-size: 13px; }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+.loading-row td { text-align: center; padding: 32px; color: var(--gray-400); }
+
+/* SECTION TABS */
+.section-tabs { display: none; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ERROR BANNER */
+.err-banner {
+  background: #FDECEA; border: 1px solid #FACAC4; border-radius: var(--radius);
+  padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: var(--red);
+  display: none; line-height: 1.6;
+}
+
+/* SEMAFORO COL */
+.h-col { font-weight: 700; font-family: 'DM Mono', monospace; font-size: 11px; }
+.h-red { color: var(--red); }
+.h-amber { color: var(--amber); }
+.h-green { color: var(--green); }
+
+/* SECCION TAG */
+.seccion-tag { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.sec-entrada { background: #E3F2FD; color: #0D47A1; }
+.sec-enviado { background: #E8F5E9; color: #1B5E20; }
+.sec-reasignado { background: #F3E5F5; color: #4A148C; }
+
+/* NOTA CELL */
+.nota-clip { font-size: 11px; color: var(--gray-400); font-style: italic; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* CHAT API KEY INPUT */
+.api-key-form { padding: 12px; background: var(--gray-50); border-bottom: 1px solid var(--gray-100); }
+.api-key-form label { font-size: 10px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 4px; }
+.api-key-form input { width: 100%; font-size: 11px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white); outline: none; font-family: 'DM Mono', monospace; }
+.api-key-form input:focus { border-color: var(--blue); }
+.api-key-hint { font-size: 10px; color: var(--gray-400); margin-top: 4px; }
+
+@media(max-width:1200px){.metrics{grid-template-columns:repeat(3,1fr);}  .chat-panel{width:300px;}}
+@media(max-width:960px){.sidebar{width:180px;} .chat-panel{display:none;}}
+@media(max-width:700px){.sidebar{display:none;} .metrics{grid-template-columns:repeat(2,1fr);}}
+@media print{.sidebar,.chat-panel,.header{display:none!important;} .main{padding:0;}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <span class="logo-badge">GADMR</span>
+    <div>
+      <div class="header-title">Dirección de Obras Públicas</div>
+      <div class="header-sub">Sistema de Monitoreo de Trámites</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="clock" id="clock">—</span>
+    <span class="sync-pill" id="syncPill">Cargando...</span>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Vistas</div>
+    <button class="nav-item active" onclick="cambiarVista('tramites',this)">
+      <span class="icon">📋</span> Todos los trámites
+      <span class="nav-badge" id="nb-total">—</span>
+    </button>
+    <button class="nav-item" onclick="cambiarVista('alertas',this)">
+      <span class="icon">⚠️</span> Alertas
+      <span class="nav-badge red" id="nb-alertas">—</span>
+    </button>
+    <button class="nav-item" onclick="cambiarVista('actividad',this)">
+      <span class="icon">🕐</span> Actividad
+    </button>
+    <button class="nav-item" onclick="cambiarVista('reporte',this)">
+      <span class="icon">📊</span> Reporte
+    </button>
+  </div>
+  <div class="sidebar-section" style="margin-top:8px;">
+    <div class="sidebar-label">Secciones</div>
+    <button class="nav-item" onclick="filtrarSeccion('Bandeja de entrada',this)">
+      <span class="icon">📥</span> Bandeja entrada
+      <span class="nav-badge" id="nb-entrada">—</span>
+    </button>
+    <button class="nav-item" onclick="filtrarSeccion('Enviados',this)">
+      <span class="icon">📤</span> Enviados
+      <span class="nav-badge" id="nb-enviados">—</span>
+    </button>
+    <button class="nav-item" onclick="filtrarSeccion('Reasignados',this)">
+      <span class="icon">🔀</span> Reasignados
+      <span class="nav-badge" id="nb-reasignados">—</span>
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="err-banner" id="errBanner"></div>
+
+  <!-- MÉTRICAS -->
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Total trámites</div><div class="metric-val" id="mTotal">—</div><div class="metric-note" id="mTotalNote">—</div></div>
+    <div class="metric danger"><div class="metric-label">Críticos +48h</div><div class="metric-val" id="mCritico">—</div><div class="metric-note" id="mCriticoNote">—</div></div>
+    <div class="metric warning"><div class="metric-label">Alerta 24–48h</div><div class="metric-val" id="mAlerta">—</div><div class="metric-note" id="mAlertaNote">—</div></div>
+    <div class="metric success"><div class="metric-label">Al día &lt;24h</div><div class="metric-val" id="mNormal">—</div><div class="metric-note" id="mNormalNote">—</div></div>
+    <div class="metric info"><div class="metric-label">Promedio horas</div><div class="metric-val" id="mProm">—</div><div class="metric-note" id="mPromNote">—</div></div>
+  </div>
+
+  <!-- VISTA TRAMITES -->
+  <div id="vista-tramites" class="tab-content active">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Trámites</div>
+          <div class="panel-sub">Clic en fila para expandir · Clic en N° para abrir en e-DOC</div>
+        </div>
+        <div class="filters">
+          <input class="filter-input" id="fBuscar" type="text" placeholder="Buscar trámite, persona..." oninput="renderTabla()">
+          <select class="filter-select" id="fEstado" onchange="renderTabla()">
+            <option value="">Todos los estados</option>
+            <option value="critico">Crítico (&gt;48h)</option>
+            <option value="alerta">Alerta (24–48h)</option>
+            <option value="normal">Normal (&lt;24h)</option>
+          </select>
+          <select class="filter-select" id="fSeccion" onchange="renderTabla()">
+            <option value="">Todas las secciones</option>
+            <option value="Bandeja de entrada">Bandeja entrada</option>
+            <option value="Enviados">Enviados</option>
+            <option value="Reasignados">Reasignados</option>
+          </select>
+          <button class="btn btn-primary" id="btnSync" onclick="cargarDatos()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28px;"></th>
+              <th style="width:90px;">N° trámite</th>
+              <th style="width:70px;">Sección</th>
+              <th style="width:200px;">Descripción</th>
+              <th style="width:170px;">Responsable</th>
+              <th style="width:90px;">Sin movimiento</th>
+              <th style="width:80px;">Estado</th>
+              <th style="width:110px;">Último mov.</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"><tr class="loading-row"><td colspan="9">Cargando trámites...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA ALERTAS -->
+  <div id="vista-alertas" class="tab-content">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:18px;font-weight:700;color:var(--gray-800);margin-bottom:4px;">⚠️ Trámites en alerta</div>
+      <div style="font-size:12px;color:var(--gray-400);">Trámites sin movimiento que requieren atención inmediata.</div>
+    </div>
+    <div id="alertasContainer"><div class="empty"><div class="empty-icon">⏳</div>Cargando alertas...</div></div>
+  </div>
+
+  <!-- VISTA ACTIVIDAD -->
+  <div id="vista-actividad" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Historial de actividad</div>
+          <div class="panel-sub">Todos los movimientos ordenados por fecha</div>
+        </div>
+        <div class="filters">
+          <input class="filter-input" id="fActBuscar" type="text" placeholder="Buscar..." oninput="renderActividad()">
+        </div>
+      </div>
+      <div id="actContainer" style="padding:12px;"><div class="empty"><div class="empty-icon">📋</div>Cargando actividad...</div></div>
+    </div>
+  </div>
+
+  <!-- VISTA REPORTE -->
+  <div id="vista-reporte" class="tab-content">
+    <div style="background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:24px 28px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px;">Reporte Ejecutivo</div>
+          <div style="font-size:12px;opacity:.7;">Dirección General de Gestión de Obras Públicas — GADMR</div>
+          <div style="font-size:11px;opacity:.5;margin-top:6px;font-family:'DM Mono',monospace;" id="repFecha">—</div>
+        </div>
+        <button class="btn" style="background:var(--gold);color:var(--navy);" onclick="window.print()">🖨 Imprimir</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;" id="repCards"></div>
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="panel-header"><div class="panel-title">Top 5 trámites críticos</div><div class="panel-sub">Mayor tiempo sin movimiento</div></div>
+      <div id="repTop5" style="padding:4px 0;"></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="panel-header"><div class="panel-title">Carga por responsable</div><div class="panel-sub">Estado actual de trámites asignados</div></div>
+      <div class="tbl-wrap">
+        <table><thead><tr>
+          <th>Responsable</th><th>Total</th><th>Críticos</th><th>Alerta</th><th>Normal</th><th>Máx. horas</th>
+        </tr></thead>
+        <tbody id="repTbResp"></tbody></table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- CHAT PANEL -->
+<aside class="chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-icon">🤖</div>
+    <div class="chat-header-text">
+      <div class="ctitle">Asistente de Trámites</div>
+      <div class="csub">Powered by Claude · Obras Públicas GADMR</div>
+    </div>
+  </div>
+
+  <div class="api-key-form" id="apiKeyForm">
+    <label>API Key de Anthropic</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." oninput="guardarKey()">
+    <div class="api-key-hint">Se guarda solo en tu navegador (localStorage)</div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg assistant">
+      <div class="msg-bubble">
+        Hola 👋 Soy tu asistente para los trámites de Obras Públicas. Puedo ayudarte a encontrar información sobre cualquier trámite, ver quién lo tiene, cuánto tiempo lleva parado, y más.<br><br>
+        <strong>Ingresa tu API key arriba</strong> para activarme, o haz preguntas de búsqueda directa sin key.
+      </div>
+      <div class="msg-time">Sistema</div>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-suggestions">
+      <button class="suggestion-btn" onclick="sugerir('¿Cuáles trámites están críticos?')">🔴 Críticos</button>
+      <button class="suggestion-btn" onclick="sugerir('¿Qué envié hoy?')">📤 Enviados hoy</button>
+      <button class="suggestion-btn" onclick="sugerir('¿Quién tiene más trámites parados?')">👤 Por responsable</button>
+      <button class="suggestion-btn" onclick="sugerir('Resumen general de trámites')">📊 Resumen</button>
+    </div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chatInput" placeholder="Pregunta sobre cualquier trámite..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensaje();}"></textarea>
+      <button class="chat-send" id="chatSend" onclick="enviarMensaje()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+</div><!-- end layout -->
+
+<script>
+// ============================================================
+// CONSTANTES
+// ============================================================
+const EDOC_BASE = 'https://egobedoc.gadmriobamba.gob.ec:8081/issues/';
+const JSON_URL = 'tramites_todos.json';
+const SECCIONES_COLOR = {
+  'Bandeja de entrada': 'sec-entrada',
+  'Enviados': 'sec-enviado',
+  'Reasignados': 'sec-reasignado'
+};
+
+// ============================================================
+// ESTADO
+// ============================================================
+let tramites = [];
+let expanded = new Set();
+let vistaActual = 'tramites';
+let seccionFiltro = '';
+let chatHistory = [];
+let apiKey = localStorage.getItem('anthropic_key') || '';
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  tick();
+  setInterval(tick, 30000);
+  if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+  cargarDatos();
+});
+
+// ============================================================
+// RELOJ
+// ============================================================
+function tick() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleString('es-EC', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+// ============================================================
+// API KEY
+// ============================================================
+function guardarKey() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (apiKey) localStorage.setItem('anthropic_key', apiKey);
+}
+
+// ============================================================
+// CARGA DE DATOS
+// ============================================================
+async function cargarDatos() {
+  const btn = document.getElementById('btnSync');
+  const pill = document.getElementById('syncPill');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Actualizando...'; }
+  pill.className = 'sync-pill'; pill.textContent = 'Cargando...';
+
+  try {
+    const res = await fetch(JSON_URL + '?_=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    tramites = data.tramites || [];
+    if (!tramites.length) throw new Error('Sin trámites en el archivo.');
+
+    actualizarMetricas();
+    actualizarBadges();
+    renderTabla();
+
+    const vActual = vistaActual;
+    if (vActual === 'alertas') renderAlertas();
+    if (vActual === 'actividad') renderActividad();
+    if (vActual === 'reporte') renderReporte();
+
+    pill.className = 'sync-pill ok';
+    pill.textContent = '✓ ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+    document.getElementById('errBanner').style.display = 'none';
+  } catch(err) {
+    const b = document.getElementById('errBanner');
+    b.style.display = 'block';
+    b.innerHTML = `<strong>No se pudo cargar ${JSON_URL}</strong> — ${err.message}<br>
+      Asegúrate de que el script Python haya corrido y subido los datos a GitHub.`;
+    pill.className = 'sync-pill err'; pill.textContent = '✗ Error';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ Actualizar'; }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function tc(s) {
+  if (!s || !s.trim()) return '';
+  return s.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+function getHoras(t) { return parseFloat(t.horas_sin_movimiento || 0); }
+function getEstado(t) {
+  const h = getHoras(t);
+  if (h >= 48) return 'critico';
+  if (h >= 24) return 'alerta';
+  return 'normal';
+}
+function getResp(t) {
+  const u = t.ultimo_movimiento || {};
+  const e = (u.enviado_a || '').trim();
+  return e ? { nombre: tc(e), cargo: tc(u.cargo || '') } : { nombre: tc(u.nombre) || 'Sin asignar', cargo: tc(u.cargo || '') };
+}
+function fmtH(h) {
+  if (!h) return '—';
+  if (h < 24) return Math.round(h) + 'h';
+  return Math.floor(h/24) + 'd ' + Math.floor(h%24) + 'h';
+}
+function fmtF(s) {
+  if (!s) return '—';
+  const d = new Date(s.replace(' ','T'));
+  return isNaN(d) ? s : d.toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' + d.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+}
+function badgeEstado(e) {
+  if (e === 'critico') return '<span class="badge badge-red">🔴 Crítico</span>';
+  if (e === 'alerta') return '<span class="badge badge-amber">🟡 Alerta</span>';
+  return '<span class="badge badge-green">🟢 Normal</span>';
+}
+function hClass(h) {
+  if (h >= 48) return 'h-red';
+  if (h >= 24) return 'h-amber';
+  return 'h-green';
+}
+
+// ============================================================
+// MÉTRICAS Y BADGES
+// ============================================================
+function actualizarMetricas() {
+  const tot = tramites.length;
+  const crit = tramites.filter(t => getEstado(t) === 'critico').length;
+  const ale = tramites.filter(t => getEstado(t) === 'alerta').length;
+  const norm = tramites.filter(t => getEstado(t) === 'normal').length;
+  const hs = tramites.map(t => getHoras(t));
+  const prom = hs.length ? Math.round(hs.reduce((a,b) => a+b) / hs.length) : 0;
+  const max = Math.round(Math.max(...hs, 0));
+
+  document.getElementById('mTotal').textContent = tot;
+  document.getElementById('mTotalNote').textContent = `${crit} críticos · ${ale} alerta`;
+  document.getElementById('mCritico').textContent = crit;
+  document.getElementById('mCriticoNote').textContent = `Máx: ${max}h sin movimiento`;
+  document.getElementById('mAlerta').textContent = ale;
+  document.getElementById('mAlertaNote').textContent = ale > 0 ? 'Entre 24 y 48h' : 'Sin alertas moderadas';
+  document.getElementById('mNormal').textContent = norm;
+  document.getElementById('mNormalNote').textContent = norm > 0 ? 'Con movimiento reciente' : '—';
+  document.getElementById('mProm').textContent = prom + 'h';
+  document.getElementById('mPromNote').textContent = `Máximo: ${max}h`;
+}
+
+function actualizarBadges() {
+  const tot = tramites.length;
+  const crit = tramites.filter(t => getEstado(t) === 'critico').length;
+  const ale = tramites.filter(t => getEstado(t) === 'alerta').length;
+  const ent = tramites.filter(t => t.seccion === 'Bandeja de entrada').length;
+  const env = tramites.filter(t => t.seccion === 'Enviados').length;
+  const rea = tramites.filter(t => t.seccion === 'Reasignados').length;
+
+  document.getElementById('nb-total').textContent = tot;
+  document.getElementById('nb-alertas').textContent = crit + ale;
+  document.getElementById('nb-entrada').textContent = ent;
+  document.getElementById('nb-enviados').textContent = env;
+  document.getElementById('nb-reasignados').textContent = rea;
+}
+
+// ============================================================
+// RENDER TABLA
+// ============================================================
+function renderTabla() {
+  const q = (document.getElementById('fBuscar').value || '').toLowerCase();
+  const fe = document.getElementById('fEstado').value;
+  const fs = document.getElementById('fSeccion').value || seccionFiltro;
+
+  const list = tramites.filter(t => {
+    const e = getEstado(t);
+    const { nombre: r } = getResp(t);
+    const u = t.ultimo_movimiento || {};
+    return (!q || (t.numero||'').toLowerCase().includes(q) || r.toLowerCase().includes(q) || (t.descripcion||'').toLowerCase().includes(q) || (u.nombre||'').toLowerCase().includes(q))
+      && (!fe || e === fe)
+      && (!fs || t.seccion === fs);
+  }).sort((a, b) => getHoras(b) - getHoras(a));
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Sin resultados.</td></tr>';
+    return;
+  }
+
+  list.forEach(t => {
+    const e = getEstado(t);
+    const h = Math.round(getHoras(t));
+    const { nombre: r } = getResp(t);
+    const isExp = expanded.has(t.numero);
+    const u = t.ultimo_movimiento || {};
+    const secCls = SECCIONES_COLOR[t.seccion] || 'sec-entrada';
+    const nota = (u.nota || '').split('\n')[0].slice(0, 80);
+
+    const tr = document.createElement('tr');
+    tr.className = 'clickable' + (isExp ? ' expanded' : '');
+    tr.onclick = () => { isExp ? expanded.delete(t.numero) : expanded.add(t.numero); renderTabla(); };
+
+    tr.innerHTML = `
+      <td><span class="exp-btn">${isExp ? '−' : '+'}</span></td>
+      <td><a class="tlink" href="${EDOC_BASE}${t.numero}" target="_blank" onclick="event.stopPropagation()">${t.numero}</a></td>
+      <td><span class="seccion-tag ${secCls}">${(t.seccion||'').replace('Bandeja de entrada','Entrada')}</span></td>
+      <td style="font-weight:500;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.descripcion||'').replace(/"/g,'')}">${tc(t.descripcion) || '—'}</td>
+      <td style="font-weight:500;font-size:12px;">${r}</td>
+      <td><span class="h-col ${hClass(h)}">${fmtH(h)}</span></td>
+      <td>${badgeEstado(e)}</td>
+      <td style="font-size:11px;color:var(--gray-400);font-family:'DM Mono',monospace;">${fmtF(u.fecha)}</td>
+      <td class="nota-clip" title="${nota.replace(/"/g,'')}">${nota || '—'}</td>`;
+    tbody.appendChild(tr);
+
+    if (isExp) {
+      const movs = t.movimientos || [];
+      const mostrar = movs.length <= 12 ? movs : movs.slice(-10);
+      const om = movs.length - mostrar.length;
+
+      let mH = `<div class="detail-grid">
+        <div class="dfield"><div class="dk">N° trámite</div><div class="dv"><a class="tlink" href="${EDOC_BASE}${t.numero}" target="_blank">${t.numero} ↗</a></div></div>
+        <div class="dfield"><div class="dk">Sección</div><div class="dv">${t.seccion || '—'}</div></div>
+        <div class="dfield"><div class="dk">Descripción</div><div class="dv">${t.descripcion || '—'}</div></div>
+        <div class="dfield"><div class="dk">Estado e-DOC</div><div class="dv">${t.estado_edoc || '—'}</div></div>
+        <div class="dfield"><div class="dk">Sin movimiento</div><div class="dv" style="font-weight:700;color:${h>=48?'var(--red)':h>=24?'var(--amber)':'var(--green)'};">${t.tiempo_texto || fmtH(h)}</div></div>
+        <div class="dfield"><div class="dk">Total movimientos</div><div class="dv">${movs.length}</div></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Historial (${movs.length} total${om>0?`, últimos ${mostrar.length}`:''})${om>0?`<span style="font-weight:400;margin-left:8px;">... ${om} movimientos anteriores omitidos</span>`:''}</div>
+      <div class="timeline">`;
+
+      mostrar.forEach((mv, i) => {
+        const esUlt = i === mostrar.length - 1;
+        const esAlert = esUlt && getHoras(t) >= 24;
+        const cls = esUlt ? (esAlert ? 'tl-item alert-last' : 'tl-item last') : 'tl-item';
+        const nota2 = (mv.nota || '').replace(/\n/g,' ').slice(0, 100);
+        mH += `<div class="${cls}">
+          <div class="tl-dot"></div>
+          <div class="tl-fecha">${fmtF(mv.fecha)}</div>
+          <div class="tl-nombre">${tc(mv.nombre)}</div>
+          <div class="tl-cargo">${tc(mv.cargo)}</div>
+          ${nota2 ? `<div class="tl-nota">${nota2}</div>` : ''}
+          ${mv.enviado_a ? `<div class="tl-env">→ ${tc(mv.enviado_a)}</div>` : ''}
+        </div>`;
+      });
+      mH += '</div>';
+
+      const dr = document.createElement('tr');
+      dr.innerHTML = `<td colspan="9"><div class="detail-inner">${mH}</div></td>`;
+      tbody.appendChild(dr);
+    }
+  });
+}
+
+// ============================================================
+// RENDER ALERTAS
+// ============================================================
+function renderAlertas() {
+  const criticos = tramites.filter(t => getEstado(t) === 'critico').sort((a,b) => getHoras(b)-getHoras(a));
+  const alertas = tramites.filter(t => getEstado(t) === 'alerta').sort((a,b) => getHoras(b)-getHoras(a));
+  const cont = document.getElementById('alertasContainer');
+
+  if (!criticos.length && !alertas.length) {
+    cont.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>Sin trámites en alerta. Todo al día.</div>';
+    return;
+  }
+
+  let html = '';
+  [[criticos,'critico','🔴','var(--red)','Críticos — más de 48h sin movimiento'],
+   [alertas,'alerta','🟡','var(--amber)','Alerta moderada — 24 a 48h sin movimiento']].forEach(([lista,cls,ico,col,sub]) => {
+    if (!lista.length) return;
+    html += `<div style="font-size:13px;font-weight:700;color:${col};margin-bottom:10px;margin-top:4px;">${ico} ${sub} (${lista.length})</div>`;
+    lista.forEach(t => {
+      const u = t.ultimo_movimiento || {};
+      const { nombre: r, cargo: rc } = getResp(t);
+      html += `<div class="alert-card ${cls}">
+        <div class="alert-hdr">
+          <div>
+            <div style="font-size:13px;font-weight:700;"><a class="tlink" href="${EDOC_BASE}${t.numero}" target="_blank">${t.numero} ↗</a></div>
+            <div style="font-size:12px;color:var(--gray-600);font-weight:500;margin-top:2px;">${tc(t.descripcion)}</div>
+            <div style="margin-top:4px;"><span class="seccion-tag ${SECCIONES_COLOR[t.seccion]||'sec-entrada'}">${t.seccion||''}</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:24px;font-weight:700;color:${col};">${t.tiempo_texto||fmtH(getHoras(t))}</div>
+            <div style="font-size:10px;color:var(--gray-400);">sin movimiento</div>
+          </div>
+        </div>
+        <div class="alert-grid">
+          <div class="dfield"><div class="dk">Responsable</div><div class="dv" style="color:${col};font-weight:700;">${r}</div></div>
+          <div class="dfield"><div class="dk">Cargo</div><div class="dv">${rc || tc(u.cargo||'')}</div></div>
+          <div class="dfield"><div class="dk">Último movimiento</div><div class="dv" style="font-family:'DM Mono',monospace;font-size:11px;">${fmtF(u.fecha)}</div></div>
+          <div class="dfield"><div class="dk">Nota</div><div class="dv" style="font-style:italic;">${(u.nota||'Sin nota').split('\n')[0].slice(0,100)}</div></div>
+        </div>
+      </div>`;
+    });
+  });
+  cont.innerHTML = html;
+}
+
+// ============================================================
+// RENDER ACTIVIDAD
+// ============================================================
+function renderActividad() {
+  const q = (document.getElementById('fActBuscar') || {value:''}).value.toLowerCase();
+  let todos = [];
+  tramites.forEach(t => {
+    (t.movimientos || []).forEach(mv => {
+      todos.push({ ...mv, tnum: t.numero, tdesc: t.descripcion, tsec: t.seccion });
+    });
+  });
+  todos = todos.filter(m => !q || (m.tnum||'').includes(q) || (m.nombre||'').toLowerCase().includes(q) || (m.nota||'').toLowerCase().includes(q));
+  todos.sort((a,b) => new Date(b.fecha.replace(' ','T')) - new Date(a.fecha.replace(' ','T')));
+
+  const cont = document.getElementById('actContainer');
+  if (!todos.length) { cont.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>Sin movimientos.</div>'; return; }
+
+  const mostrar = todos.slice(0,300);
+  cont.innerHTML = mostrar.map(m => {
+    const nota = (m.nota||'').replace(/\n/g,' ').slice(0,120);
+    const secCls = SECCIONES_COLOR[m.tsec] || 'sec-entrada';
+    return `<div style="display:flex;gap:14px;padding:10px 12px;border-bottom:1px solid var(--gray-100);font-size:12px;align-items:flex-start;">
+      <div style="min-width:90px;">
+        <div><a class="tlink" href="${EDOC_BASE}${m.tnum}" target="_blank">#${m.tnum}</a></div>
+        <div style="font-size:10px;color:var(--gray-400);font-family:'DM Mono',monospace;margin-top:2px;">${fmtF(m.fecha)}</div>
+        <div style="margin-top:3px;"><span class="seccion-tag ${secCls}">${(m.tsec||'').replace('Bandeja de entrada','Entrada')}</span></div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:600;">${tc(m.nombre)}</div>
+        <div style="font-size:11px;color:var(--gray-400);">${tc(m.cargo)}</div>
+        ${nota ? `<div style="font-size:11px;color:var(--gray-600);font-style:italic;margin-top:2px;">${nota}</div>` : ''}
+        ${m.enviado_a ? `<div style="font-size:11px;color:var(--blue);font-weight:600;margin-top:2px;">→ ${tc(m.enviado_a)}</div>` : ''}
+        <div style="font-size:10px;color:var(--gray-400);margin-top:2px;">${tc(m.tdesc||'')}</div>
+      </div>
+    </div>`;
+  }).join('') + (todos.length > 300 ? `<div class="empty">Mostrando 300 de ${todos.length} movimientos</div>` : '');
+}
+
+// ============================================================
+// RENDER REPORTE
+// ============================================================
+function renderReporte() {
+  const now = new Date();
+  document.getElementById('repFecha').textContent = 'Generado: ' + now.toLocaleString('es-EC',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const tot = tramites.length;
+  const crit = tramites.filter(t=>getEstado(t)==='critico').length;
+  const ale = tramites.filter(t=>getEstado(t)==='alerta').length;
+  const norm = tramites.filter(t=>getEstado(t)==='normal').length;
+  const totalMovs = tramites.reduce((s,t)=>(s+(t.movimientos||[]).length),0);
+  const pct = tot ? Math.round((norm/tot)*100) : 0;
+
+  document.getElementById('repCards').innerHTML = `
+    <div class="metric"><div class="metric-label">Total trámites</div><div class="metric-val">${tot}</div><div class="metric-note">${tramites.filter(t=>t.seccion==='Bandeja de entrada').length} en bandeja</div></div>
+    <div class="metric danger"><div class="metric-label">Críticos +48h</div><div class="metric-val">${crit}</div><div class="metric-note">Requieren acción inmediata</div></div>
+    <div class="metric success"><div class="metric-label">Al día</div><div class="metric-val">${pct}%</div><div class="metric-note">${norm} trámites normales</div></div>
+    <div class="metric info"><div class="metric-label">Movimientos totales</div><div class="metric-val">${totalMovs}</div><div class="metric-note">Registrados en el período</div></div>`;
+
+  // Top 5
+  const t5 = [...tramites].filter(t=>getEstado(t)==='critico').sort((a,b)=>getHoras(b)-getHoras(a)).slice(0,5);
+  document.getElementById('repTop5').innerHTML = t5.length ? t5.map((t,i) => {
+    const {nombre:r} = getResp(t);
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 18px;border-bottom:1px solid var(--gray-100);font-size:12px;">
+      <div style="font-size:16px;font-weight:700;color:var(--red);min-width:28px;">#${i+1}</div>
+      <div style="flex:1;">
+        <div style="font-weight:500;"><a class="tlink" href="${EDOC_BASE}${t.numero}" target="_blank">${t.numero}</a> — ${tc(t.descripcion)}</div>
+        <div style="font-size:11px;color:var(--gray-400);">Responsable: ${r} · ${t.seccion}</div>
+      </div>
+      <div style="font-weight:700;color:var(--red);font-family:'DM Mono',monospace;">${t.tiempo_texto||fmtH(getHoras(t))}</div>
+    </div>`;
+  }).join('') : '<div class="empty" style="padding:20px;"><div class="empty-icon">✅</div>Sin trámites críticos.</div>';
+
+  // Tabla responsables
+  const rMap = {};
+  tramites.forEach(t => {
+    const {nombre:r,cargo:rc} = getResp(t);
+    if (!rMap[r]) rMap[r] = {cargo:rc, tot:0, c:0, a:0, n:0, mH:0};
+    rMap[r].tot++;
+    const e = getEstado(t), h = getHoras(t);
+    if (e==='critico') rMap[r].c++;
+    else if (e==='alerta') rMap[r].a++;
+    else rMap[r].n++;
+    if (h > rMap[r].mH) rMap[r].mH = h;
+  });
+  document.getElementById('repTbResp').innerHTML = Object.entries(rMap)
+    .sort((a,b)=>b[1].c-a[1].c||b[1].a-a[1].a)
+    .map(([nm,v])=>`<tr>
+      <td style="font-weight:600;">${nm}</td>
+      <td style="text-align:center;font-weight:700;">${v.tot}</td>
+      <td style="text-align:center;color:${v.c>0?'var(--red)':'var(--gray-400)'};font-weight:${v.c>0?700:400};">${v.c}</td>
+      <td style="text-align:center;color:${v.a>0?'var(--amber)':'var(--gray-400)'};font-weight:${v.a>0?700:400};">${v.a}</td>
+      <td style="text-align:center;color:var(--green);">${v.n}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${v.mH>=48?'var(--red)':v.mH>=24?'var(--amber)':'var(--green)'};">${fmtH(Math.round(v.mH))}</td>
+    </tr>`).join('');
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+function cambiarVista(vista, el) {
+  vistaActual = vista;
+  seccionFiltro = '';
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('vista-' + vista).classList.add('active');
+  el.classList.add('active');
+  if (vista === 'alertas') renderAlertas();
+  if (vista === 'actividad') renderActividad();
+  if (vista === 'reporte') renderReporte();
+}
+
+function filtrarSeccion(sec, el) {
+  vistaActual = 'tramites';
+  seccionFiltro = sec;
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('vista-tramites').classList.add('active');
+  el.classList.add('active');
+  document.getElementById('fSeccion').value = sec;
+  renderTabla();
+}
+
+// ============================================================
+// CHAT
+// ============================================================
+function sugerir(txt) {
+  document.getElementById('chatInput').value = txt;
+  enviarMensaje();
+}
+
+function agregarMensaje(rol, texto, typing = false) {
+  const cont = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + rol;
+  if (typing) {
+    div.id = 'typing-indicator';
+    div.innerHTML = `<div class="chat-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  } else {
+    const hora = new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+    div.innerHTML = `<div class="msg-bubble">${texto.replace(/\n/g,'<br>')}</div><div class="msg-time">${hora}</div>`;
+  }
+  cont.appendChild(div);
+  cont.scrollTop = cont.scrollHeight;
+  return div;
+}
+
+function construirContexto() {
+  const crit = tramites.filter(t => getEstado(t) === 'critico');
+  const ale = tramites.filter(t => getEstado(t) === 'alerta');
+  const norm = tramites.filter(t => getEstado(t) === 'normal');
+
+  let ctx = `Eres un asistente experto en gestión de trámites municipales del GADMR (Gobierno Autónomo Descentralizado Municipal de Riobamba), específicamente de la Dirección de Obras Públicas. Responde siempre en español, de forma concisa y directa. Usa los datos exactos del JSON.
+
+RESUMEN ACTUAL:
+- Total trámites monitoreados: ${tramites.length}
+- Críticos (>48h sin movimiento): ${crit.length}
+- Alerta (24-48h): ${ale.length}
+- Normales (<24h): ${norm.length}
+- Secciones: Bandeja de entrada (${tramites.filter(t=>t.seccion==='Bandeja de entrada').length}), Enviados (${tramites.filter(t=>t.seccion==='Enviados').length}), Reasignados (${tramites.filter(t=>t.seccion==='Reasignados').length})
+
+TRÁMITES CRÍTICOS (top 10):
+${crit.slice(0,10).map(t=>{const{nombre:r}=getResp(t);return`- #${t.numero} | ${t.descripcion||'Sin descripción'} | Responsable: ${r} | ${t.tiempo_texto||fmtH(getHoras(t))} sin movimiento | Sección: ${t.seccion}`;}).join('\n')}
+
+TODOS LOS TRÁMITES (resumen):
+${tramites.slice(0,50).map(t=>{const{nombre:r}=getResp(t);const u=t.ultimo_movimiento||{};return`#${t.numero}|${t.descripcion||''}|${r}|${getEstado(t)}|${fmtH(getHoras(t))}|${t.seccion}|${u.nota||''}`;}).join('\n')}`;
+
+  return ctx;
+}
+
+async function enviarMensaje() {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('chatSend');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  agregarMensaje('user', msg);
+  chatHistory.push({ role: 'user', content: msg });
+
+  // Sin API key: respuesta local
+  if (!apiKey) {
+    const resp = respuestaLocal(msg);
+    agregarMensaje('assistant', resp);
+    chatHistory.push({ role: 'assistant', content: resp });
+    return;
+  }
+
+  sendBtn.disabled = true;
+  const typingDiv = agregarMensaje('assistant', '', true);
+
+  try {
+    const systemPrompt = construirContexto();
+    const messages = chatHistory.slice(-10).map(m => ({ role: m.role, content: m.content }));
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        system: systemPrompt,
+        messages: messages
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'Error API ' + response.status);
+    }
+
+    const data = await response.json();
+    const respText = data.content[0]?.text || 'Sin respuesta.';
+    typingDiv.remove();
+    agregarMensaje('assistant', respText);
+    chatHistory.push({ role: 'assistant', content: respText });
+
+  } catch(err) {
+    typingDiv.remove();
+    const errMsg = `Error al conectar con Claude: ${err.message}\n\nVerifica que tu API key sea correcta y que tengas saldo disponible.`;
+    agregarMensaje('assistant', errMsg);
+  }
+
+  sendBtn.disabled = false;
+}
+
+// Respuestas locales sin API key
+function respuestaLocal(msg) {
+  const q = msg.toLowerCase();
+  if (q.includes('crítico') || q.includes('critico')) {
+    const crit = tramites.filter(t=>getEstado(t)==='critico');
+    if (!crit.length) return '✅ No hay trámites críticos en este momento.';
+    return `🔴 Hay ${crit.length} trámites críticos:\n` + crit.slice(0,5).map(t=>`• #${t.numero} — ${tc(t.descripcion)} (${t.tiempo_texto||fmtH(getHoras(t))})`).join('\n');
+  }
+  if (q.includes('resumen') || q.includes('total')) {
+    return `📊 Resumen actual:\n• Total: ${tramites.length} trámites\n• Críticos: ${tramites.filter(t=>getEstado(t)==='critico').length}\n• Alerta: ${tramites.filter(t=>getEstado(t)==='alerta').length}\n• Normales: ${tramites.filter(t=>getEstado(t)==='normal').length}`;
+  }
+  const numMatch = msg.match(/\d{3,6}/);
+  if (numMatch) {
+    const t = tramites.find(x => x.numero === numMatch[0]);
+    if (t) {
+      const {nombre:r} = getResp(t);
+      return `📋 Trámite #${t.numero}\n• ${tc(t.descripcion)}\n• Estado: ${getEstado(t).toUpperCase()}\n• Responsable: ${r}\n• Sin movimiento: ${t.tiempo_texto||fmtH(getHoras(t))}\n• Sección: ${t.seccion}`;
+    }
+    return `No encontré el trámite #${numMatch[0]} en los datos cargados.`;
+  }
+  return 'Para respuestas inteligentes, ingresa tu API key de Anthropic arriba. Sin key puedo buscar trámites por número o mostrarte críticos y resúmenes básicos.';
+}
+</script>
+</body>
+</html>
