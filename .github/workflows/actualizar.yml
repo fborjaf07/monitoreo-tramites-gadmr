@@ -1,23 +1,21 @@
-name: Actualizar Trámites GADMR
+name: Actualizar Tramites GADMR
 
 on:
   schedule:
-    # 12:00 AM hora Ecuador (UTC-5) = 05:00 UTC
     - cron: '0 5 * * *'
-  workflow_dispatch:  # permite correr manualmente desde GitHub
+  workflow_dispatch:
 
 jobs:
   actualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # máximo 2 horas para 2000+ trámites
-
+    timeout-minutes: 120
     steps:
-      - name: Checkout repositorio
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configurar Python 3.11
+      - name: Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -28,23 +26,16 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
-      - name: Ejecutar extracción de trámites
+      - name: Ejecutar script
         env:
-          EDOC_USUARIO:    ${{ secrets.EDOC_USUARIO }}
+          EDOC_USUARIO: ${{ secrets.EDOC_USUARIO }}
           EDOC_CONTRASENA: ${{ secrets.EDOC_CONTRASENA }}
         run: python extraer_tramites.py
 
-      - name: Verificar archivos generados
+      - name: Commit y push
         run: |
-          echo "=== tramites_todos.json ==="
-          cat tramites_todos.json | python -c "import json,sys; d=json.load(sys.stdin); print(f'Total trámites: {d[\"total\"]}')"
-          echo "=== alertas.json ==="
-          cat alertas.json | python -c "import json,sys; d=json.load(sys.stdin); print(f'Total alertas: {d[\"total_alertas\"]}')"
-
-      - name: Commit y push de los datos actualizados
-        run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tramites_todos.json alertas.json
-          git diff --staged --quiet || git commit -m "🔄 Actualización automática $(date -u '+%Y-%m-%d %H:%M') UTC"
+          git diff --staged --quiet || git commit -m "Actualizacion automatica"
           git push
