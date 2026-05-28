@@ -2,5 +2,3 @@
 *.txt 
 __pycache__/ 
 *.pyc 
-alertas.json 
-dashboard_tramites.xlsx
