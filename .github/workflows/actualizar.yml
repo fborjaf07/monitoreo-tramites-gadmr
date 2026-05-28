@@ -6,36 +6,149 @@ on:
   workflow_dispatch:
 
 jobs:
-  actualizar:
+  # ── FASE 1: Descubrir números ──────────────────────────────
+  descubrir:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
+    outputs:
+      total_entrada:     ${{ steps.counts.outputs.entrada }}
+      total_enviados:    ${{ steps.counts.outputs.enviados }}
+      total_reasignados: ${{ steps.counts.outputs.reasignados }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Instalar dependencias
-        run: |
-          pip install playwright openpyxl
-          playwright install chromium
-          playwright install-deps chromium
-
-      - name: Ejecutar script
+      - run: pip install playwright && playwright install chromium && playwright install-deps chromium
+      - name: Descubrir tramites
         env:
-          EDOC_USUARIO: ${{ secrets.EDOC_USUARIO }}
+          EDOC_USUARIO:    ${{ secrets.EDOC_USUARIO }}
           EDOC_CONTRASENA: ${{ secrets.EDOC_CONTRASENA }}
-        run: python extraer_tramites.py
+        run: python 1_descubrir.py
+      - name: Leer totales
+        id: counts
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('descubrimiento.json'))
+          t = d['totales']
+          print('entrada=' + str(t.get('entrada',0)))
+          print('enviados=' + str(t.get('enviados',0)))
+          print('reasignados=' + str(t.get('reasignados',0)))
+          " >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numeros
+          path: numeros_*.json
 
+  # ── FASE 2a: Detalle Bandeja de entrada ───────────────────
+  detalle_entrada:
+    needs: descubrir
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        lote: [1, 2]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright && playwright install chromium && playwright install-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: numeros
+      - name: Extraer lote
+        env:
+          EDOC_USUARIO:    ${{ secrets.EDOC_USUARIO }}
+          EDOC_CONTRASENA: ${{ secrets.EDOC_CONTRASENA }}
+        run: python 2_extraer_detalle.py entrada ${{ matrix.lote }} 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lotes-entrada-${{ matrix.lote }}
+          path: tramites_entrada_lote*.json
+
+  # ── FASE 2b: Detalle Enviados (10 lotes) ──────────────────
+  detalle_enviados:
+    needs: descubrir
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        lote: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright && playwright install chromium && playwright install-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: numeros
+      - name: Extraer lote
+        env:
+          EDOC_USUARIO:    ${{ secrets.EDOC_USUARIO }}
+          EDOC_CONTRASENA: ${{ secrets.EDOC_CONTRASENA }}
+        run: python 2_extraer_detalle.py enviados ${{ matrix.lote }} 10
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lotes-enviados-${{ matrix.lote }}
+          path: tramites_enviados_lote*.json
+
+  # ── FASE 2c: Detalle Reasignados (17 lotes) ───────────────
+  detalle_reasignados:
+    needs: descubrir
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        lote: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright && playwright install chromium && playwright install-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: numeros
+      - name: Extraer lote
+        env:
+          EDOC_USUARIO:    ${{ secrets.EDOC_USUARIO }}
+          EDOC_CONTRASENA: ${{ secrets.EDOC_CONTRASENA }}
+        run: python 2_extraer_detalle.py reasignados ${{ matrix.lote }} 17
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lotes-reasignados-${{ matrix.lote }}
+          path: tramites_reasignados_lote*.json
+
+  # ── FASE 3: Merge y push ───────────────────────────────────
+  merge:
+    needs: [detalle_entrada, detalle_enviados, detalle_reasignados]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lotes-*
+          merge-multiple: true
+      - name: Merge JSON
+        run: python 3_merge.py
       - name: Commit y push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tramites_todos.json alertas.json
-          git diff --staged --quiet || git commit -m "Actualizacion automatica"
+          git diff --staged --quiet || git commit -m "Actualizacion automatica $(date -u '+%Y-%m-%d')"
           git push
