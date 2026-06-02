@@ -40,21 +40,51 @@ def calcular_tiempo(fecha_str):
     return None, "Desconocido"
 
 def extraer_movimientos(texto):
+    """
+    Formato real del e-DOC GADMR:
+    ( NNNNNN ) #N  NOMBRE APELLIDO (CARGO)
+    YYYY-MM-DD HH:MM (X dias)
+    Nota: texto...
+    • Documento Enviado a NOMBRE
+    • Asignado ha cambiado de X a Y
+    """
     movimientos = []
+    # Patron para el historico del e-DOC GADMR
     patron = re.compile(
-        r'#\d+\s*\n([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s\.]+?)\s*\(([^)]+)\)\s*\n'
-        r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})[^\n]*\n(.*?)(?=#\d+\s*\n|\Z)', re.DOTALL)
+        r'\(\s*\d+\s*\)\s*#\d+\s+'
+        r'([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s\.]+?)\s*'
+        r'\(([^)]+)\)\s*\n'
+        r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})[^\n]*\n'
+        r'(.*?)(?=\(\s*\d+\s*\)\s*#\d+|\Z)',
+        re.DOTALL
+    )
     for m in patron.finditer(texto):
+        nombre    = m.group(1).strip()
+        cargo     = m.group(2).strip()
+        fecha     = m.group(3).strip()
         contenido = m.group(4)
-        nota_m = re.search(r'Nota:\s*(.+?)(?:\nAsignado|\nDocumento|\nAnadido|\nEncargo|\Z)', contenido, re.DOTALL)
+
+        # Extraer nota
+        nota_m = re.search(r'Nota:\s*(.+?)(?:\n[•\-]|\Z)', contenido, re.DOTALL)
         nota = nota_m.group(1).strip()[:300] if nota_m else ""
+
+        # Extraer destinatario
         enviado_a = ""
-        for pat in [r'Asignado ha cambiado de .+? a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)',
-                    r'Documento Enviado a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)']:
+        for pat in [
+            r'Documento Enviado a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\n|$)',
+            r'Asignado ha cambiado de .+? a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\n|$)',
+            r'[•\-]\s*Documento Enviado a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\n|$)'
+        ]:
             mm = re.search(pat, contenido)
-            if mm: enviado_a = mm.group(1).strip(); break
-        movimientos.append({"nombre": m.group(1).strip(), "cargo": m.group(2).strip(),
-                            "fecha": m.group(3).strip(), "nota": nota, "enviado_a": enviado_a})
+            if mm:
+                enviado_a = mm.group(1).strip()
+                break
+
+        if nombre and fecha:
+            movimientos.append({
+                "nombre": nombre, "cargo": cargo,
+                "fecha": fecha, "nota": nota, "enviado_a": enviado_a
+            })
     return movimientos
 
 async def login(page):
@@ -68,23 +98,57 @@ async def login(page):
     if "egobedoc" not in page.url:
         raise Exception(f"Login fallido: {page.url}")
 
-async def extraer_detalle(page, numero, seccion):
+async def re_login(page):
+    """Re-autenticar si la sesión expiró"""
+    print("  Re-loginando...")
+    await page.goto(f"{CAS_LOGIN}?service={SERVICE}", timeout=60000, wait_until="networkidle")
+    await page.wait_for_timeout(2000)
+    await page.fill('input[name="username"]', USUARIO)
+    await page.fill('input[name="password"]', CONTRASENA)
+    await page.click('button[type="submit"], input[type="submit"]')
+    await page.wait_for_load_state("networkidle")
+    await page.wait_for_timeout(5000)
+    if "egobedoc" not in page.url:
+        raise Exception(f"Re-login fallido: {page.url}")
+    print("  Re-login OK")
+
+async def extraer_detalle(page, numero, seccion, reintentos=2):
     r = {"numero": numero, "seccion": seccion, "descripcion": "", "estado_edoc": "",
          "movimientos": [], "horas_sin_movimiento": 0, "tiempo_texto": "—",
          "ultimo_movimiento": None, "error": None}
     try:
         await page.goto(f"{BASE_URL}/issues/{numero}", timeout=60000, wait_until="networkidle")
         await page.wait_for_timeout(1500)
+
+        # Detectar sesión expirada y re-loginear
+        if "cas/login" in page.url or "Enter Username" in await page.inner_text("body"):
+            print(f"  Sesión expirada en #{numero} — re-loginando...")
+            await re_login(page)
+            await page.goto(f"{BASE_URL}/issues/{numero}", timeout=60000, wait_until="networkidle")
+            await page.wait_for_timeout(1500)
+
         for _ in range(4):
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(500)
+
         texto = await page.inner_text("body")
-        m = re.search(r"Asunto:\s*(.+?)(?:\n)", texto)
+
+        # Extraer asunto — puede estar como "Asunto: TEXTO" o en negrita
+        m = re.search(r"Asunto:\s*(.+?)(?:
+)", texto)
         if m: r["descripcion"] = m.group(1).strip()
-        m = re.search(r"Estado:\s*(\w[\w\s]*?)(?:\n)", texto)
+
+        m = re.search(r"Estado:\s*(\w[\w\s]*?)(?:
+)", texto)
         if m: r["estado_edoc"] = m.group(1).strip()
-        idx = max(texto.find("Historico"), texto.find("Hist"))
-        if idx > 0: r["movimientos"] = extraer_movimientos(texto[idx:])
+
+        # Buscar sección histórico
+        for keyword in ["Histórico (Interno)", "Historico (Interno)", "Histórico", "Historico"]:
+            idx = texto.find(keyword)
+            if idx > 0:
+                r["movimientos"] = extraer_movimientos(texto[idx:])
+                break
+
         if r["movimientos"]:
             u = r["movimientos"][-1]
             h, t = calcular_tiempo(u["fecha"])
