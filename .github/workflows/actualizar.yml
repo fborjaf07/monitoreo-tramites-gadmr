@@ -156,12 +156,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp tramites_todos.json /tmp/tramites_todos.json
-          cp alertas.json /tmp/alertas.json
-          git fetch origin
-          git reset --hard origin/main
-          cp /tmp/tramites_todos.json tramites_todos.json
-          cp /tmp/alertas.json alertas.json
           git add tramites_todos.json alertas.json
           git diff --staged --quiet || git commit -m "Actualizacion automatica $(date -u '+%Y-%m-%d')"
-          git push origin main
+          git push origin HEAD:main --force-with-lease || git push origin HEAD:main --force
