@@ -142,7 +142,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: lotes-*
+          path: lotes
           merge-multiple: true
+      - name: Listar archivos descargados
+        run: find lotes -name "*.json" | head -50
+      - name: Mover lotes al directorio actual
+        run: |
+          find lotes -name "tramites_*_lote*.json" -exec cp {} . \;
+          ls -la tramites_*_lote*.json | wc -l
       - name: Merge JSON
         run: python 3_merge.py
       - name: Commit y push
@@ -151,4 +158,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tramites_todos.json alertas.json
           git diff --staged --quiet || git commit -m "Actualizacion automatica $(date -u '+%Y-%m-%d')"
+          git pull --rebase origin main
           git push
