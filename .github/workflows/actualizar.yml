@@ -131,7 +131,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -144,11 +143,42 @@ jobs:
         run: find lotes -name "tramites_*_lote*.json" -exec cp {} . \;
       - name: Merge JSON
         run: python 3_merge.py
-      - name: Commit y push
+      - name: Subir JSON via GitHub API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tramites_todos.json alertas.json
-          git diff --staged --quiet || git commit -m "Actualizacion automatica $(date -u '+%Y-%m-%d')"
-          git pull origin main --no-rebase
-          git push origin main
+          python3 << 'EOF'
+          import base64, json, urllib.request, os
+
+          token = os.environ['GH_TOKEN']
+          repo  = 'fborjaf07/monitoreo-tramites-gadmr'
+
+          for fname in ['tramites_todos.json', 'alertas.json']:
+              with open(fname, 'rb') as f:
+                  content = base64.b64encode(f.read()).decode()
+
+              url = f'https://api.github.com/repos/{repo}/contents/{fname}'
+              req = urllib.request.Request(url, headers={
+                  'Authorization': f'token {token}',
+                  'Accept': 'application/vnd.github.v3+json'
+              })
+              try:
+                  res = json.loads(urllib.request.urlopen(req).read())
+                  sha = res['sha']
+              except:
+                  sha = None
+
+              data = json.dumps({
+                  'message': 'Actualizacion automatica',
+                  'content': content,
+                  'sha': sha
+              }).encode()
+
+              req2 = urllib.request.Request(url, data=data, method='PUT', headers={
+                  'Authorization': f'token {token}',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/vnd.github.v3+json'
+              })
+              urllib.request.urlopen(req2)
+              print(f'OK {fname}')
+          EOF
