@@ -133,13 +133,10 @@ async def extraer_detalle(page, numero, seccion, reintentos=2):
 
         texto = await page.inner_text("body")
 
-        # Extraer asunto — puede estar como "Asunto: TEXTO" o en negrita
-        m = re.search(r"Asunto:\s*(.+?)(?:
-)", texto)
+        m = re.search(r"Asunto:\s*(.+?)(?:\n)", texto)
         if m: r["descripcion"] = m.group(1).strip()
 
-        m = re.search(r"Estado:\s*(\w[\w\s]*?)(?:
-)", texto)
+        m = re.search(r"Estado:\s*(\w[\w\s]*?)(?:\n)", texto)
         if m: r["estado_edoc"] = m.group(1).strip()
 
         # Buscar sección histórico
