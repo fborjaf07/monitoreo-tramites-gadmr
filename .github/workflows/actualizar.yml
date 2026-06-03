@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── FASE 1: Descubrir números ──────────────────────────────
   descubrir:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -43,7 +42,6 @@ jobs:
           name: numeros
           path: numeros_*.json
 
-  # ── FASE 2a: Detalle Bandeja de entrada ───────────────────
   detalle_entrada:
     needs: descubrir
     runs-on: ubuntu-latest
@@ -71,7 +69,6 @@ jobs:
           name: lotes-entrada-${{ matrix.lote }}
           path: tramites_entrada_lote*.json
 
-  # ── FASE 2b: Detalle Enviados (10 lotes) ──────────────────
   detalle_enviados:
     needs: descubrir
     runs-on: ubuntu-latest
@@ -99,7 +96,6 @@ jobs:
           name: lotes-enviados-${{ matrix.lote }}
           path: tramites_enviados_lote*.json
 
-  # ── FASE 2c: Detalle Reasignados (17 lotes) ───────────────
   detalle_reasignados:
     needs: descubrir
     runs-on: ubuntu-latest
@@ -127,7 +123,6 @@ jobs:
           name: lotes-reasignados-${{ matrix.lote }}
           path: tramites_reasignados_lote*.json
 
-  # ── FASE 3: Merge y push ───────────────────────────────────
   merge:
     needs: [detalle_entrada, detalle_enviados, detalle_reasignados]
     runs-on: ubuntu-latest
@@ -136,7 +131,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -146,7 +140,7 @@ jobs:
           pattern: lotes-*
           path: lotes
           merge-multiple: true
-      - name: Mover lotes al directorio actual
+      - name: Mover lotes
         run: find lotes -name "tramites_*_lote*.json" -exec cp {} . \;
       - name: Merge JSON
         run: python 3_merge.py
@@ -156,4 +150,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tramites_todos.json alertas.json
           git diff --staged --quiet || git commit -m "Actualizacion automatica $(date -u '+%Y-%m-%d')"
-          git push origin HEAD:main --force
+          git pull origin main --no-rebase
+          git push origin main
