@@ -284,6 +284,7 @@ tr.expanded td { background: #F0F6FF; }
         <div class="filters">
           <button class="btn btn-primary btn-sm" id="btnSync" onclick="cargarDatos()">↻ Actualizar</button>
           <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Imprimir</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarCSV()">⬇ Exportar CSV</button>
         </div>
       </div>
       <!-- FILTROS FILA 1 -->
@@ -957,6 +958,37 @@ function aplicarFiltroMes() {
     document.getElementById('fHasta').value=`${mes}-${String(ultimo).padStart(2,'0')}`;
   }
   resetPag(); renderTabla();
+}
+
+function exportarCSV() {
+  const lista = getListaOrdenada(getListaFiltrada());
+  const filas = [
+    ['N Tramite','Tipo','Seccion','Descripcion','Responsable','Cargo','Estado','Sin movimiento (h)','Ultimo movimiento','Nota','Enviado a']
+  ];
+  lista.forEach(t => {
+    const {nombre:r, cargo:c} = getResp(t);
+    const u = t.ultimo_movimiento || {};
+    filas.push([
+      t.numero,
+      TIPO_LABEL[t._tipo] || t._tipo,
+      t.seccion,
+      (t.descripcion || '').replace(/"/g,"'"),
+      r, c,
+      getEstado(t),
+      Math.round(getH(t)),
+      u.fecha || '',
+      (u.nota || '').replace(/\n/g,' ').replace(/"/g,"'").slice(0,200),
+      u.enviado_a || ''
+    ]);
+  });
+  const csv = filas.map(f => f.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `tramites_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function limpiarFiltros() {
