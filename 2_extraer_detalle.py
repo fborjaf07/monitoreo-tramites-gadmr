@@ -85,7 +85,8 @@ def extraer_movimientos(texto):
                 "nombre": nombre, "cargo": cargo,
                 "fecha": fecha, "nota": nota, "enviado_a": enviado_a
             })
-    return movimientos
+    # e-DOC ahora muestra reciente->antiguo: invertir para guardar cronologicamente
+    return list(reversed(movimientos))
 
 async def login(page):
     await page.goto(f"{CAS_LOGIN}?service={SERVICE}", timeout=60000, wait_until="networkidle")
@@ -127,10 +128,8 @@ async def extraer_detalle(page, numero, seccion, reintentos=2):
             await page.goto(f"{BASE_URL}/issues/{numero}", timeout=60000, wait_until="networkidle")
             await page.wait_for_timeout(1500)
 
-        for _ in range(4):
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_timeout(500)
-
+        # e-DOC actualizado: muestra movimientos recientes primero,
+        # ya no se necesita scroll hasta el fondo.
         texto = await page.inner_text("body")
 
         m = re.search(r"Asunto:\s*(.+?)(?:\n)", texto)
