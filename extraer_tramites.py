@@ -4,245 +4,320 @@ import os
 import re
 from datetime import datetime
 from playwright.async_api import async_playwright
+from openpyxl import load_workbook
 
-USUARIO    = os.environ.get("EDOC_USUARIO", "")
-CONTRASENA = os.environ.get("EDOC_CONTRASENA", "")
+USUARIO = os.environ.get("USUARIO", "borjafa")
+CONTRASENA = os.environ.get("CONTRASENA", "tu_contrasena")
 HORAS_ALERTA = 24
-ARCHIVO_JSON    = "tramites_todos.json"
+ARCHIVO_ENTRADA = "tramites_entrada.xlsx"
 ARCHIVO_ALERTAS = "alertas.json"
+ARCHIVO_TODOS = "tramites_todos.json"
 
-CAS_LOGIN = "https://egob.gadmriobamba.gob.ec:8443/cas/login"
-BASE_URL  = "https://egobedoc.gadmriobamba.gob.ec:8081"
-SERVICE   = "https://egobedoc.gadmriobamba.gob.ec:8081/auth/cas/callback?origin=https%3A%2F%2Fegobedoc.gadmriobamba.gob.ec%3A8081%2F"
+LOGIN_URL = ("https://egob.gadmriobamba.gob.ec:8443/cas/login?service=https%3A%2F%2Fegobedoc.gadmriobamba.gob.ec%3A8081%2Fauth%2Fcas%2Fcallback%3Forigin%3Dhttps%253A%252F%252Fegobedoc.gadmriobamba.gob.ec%253A8081%252F")
+BASE_URL = "https://egobedoc.gadmriobamba.gob.ec:8081/issues/"
 
-SECCIONES = {
-    "Bandeja de entrada": f"{BASE_URL}/my/passig",
-    "Enviados":           f"{BASE_URL}/my/pmy",
-    "Reasignados":        f"{BASE_URL}/my/preasigned",
-}
+def leer_tramites_entrada():
+    if not os.path.exists(ARCHIVO_ENTRADA):
+        print("ERROR: No se encuentra tramites_entrada.xlsx")
+        return []
+    wb = load_workbook(ARCHIVO_ENTRADA)
+    ws = wb.active
+    tramites = []
+    for row in ws.iter_rows(min_row=4, values_only=True):
+        numero = row[0]
+        descripcion = row[1] if len(row) > 1 else ""
+        activo = row[2] if len(row) > 2 else "SI"
+        if numero and str(numero).strip() and str(activo).upper() == "SI":
+            tramites.append({
+                "numero": str(numero).strip(),
+                "descripcion": str(descripcion).strip() if descripcion else ""
+            })
+    return tramites
 
-# ============================================================
 def calcular_tiempo(fecha_str):
     if not fecha_str:
         return None, "Desconocido"
     try:
-        for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y"]:
+        formatos = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y"]
+        fecha = None
+        for fmt in formatos:
             try:
                 fecha = datetime.strptime(str(fecha_str).strip(), fmt)
-                delta = datetime.now() - fecha
-                h = delta.total_seconds() / 3600
-                if h < 1:   return h, f"{int(delta.total_seconds()/60)}min"
-                elif h < 24: return h, f"{int(h)}h {int((h%1)*60)}min"
-                else:        return h, f"{int(h//24)}d {int(h%24)}h"
+                break
             except ValueError:
                 continue
+        if not fecha:
+            return None, "Desconocido"
+        delta = datetime.now() - fecha
+        horas = delta.total_seconds() / 3600
+        if horas < 1:
+            return horas, f"{int(delta.total_seconds()/60)} min"
+        elif horas < 24:
+            return horas, f"{int(horas)}h {int((horas%1)*60)}min"
+        else:
+            dias = int(horas // 24)
+            hrs = int(horas % 24)
+            return horas, f"{dias}d {hrs}h"
     except Exception:
-        pass
-    return None, "Desconocido"
+        return None, "Desconocido"
 
-def extraer_movimientos(texto):
+def color_semaforo(horas):
+    if horas is None:
+        return "D9D9D9"
+    if horas >= HORAS_ALERTA:
+        return "FF4C4C"
+    elif horas >= HORAS_ALERTA * 0.75:
+        return "FFC000"
+    else:
+        return "70AD47"
+
+def extraer_movimientos(historico_text):
+    """
+    Extrae todos los movimientos del historico.
+    El e-DOC ahora muestra el mas reciente PRIMERO.
+    Esta funcion extrae en el orden que aparecen (reciente->antiguo)
+    y al final se invierten para guardar cronologicamente (antiguo->reciente).
+
+    Formato de cada bloque:
+    Tipo de accion (opcional)
+    (
+    NUMERO_TRAMITE
+    )
+    #NUM_MOVIMIENTO
+    NOMBRE APELLIDO (CARGO)
+    2026-09-24 15:00 (21 dias)
+    Nota: ...
+    Asignado ha cambiado de X a Y
+    """
     movimientos = []
-    patron = re.compile(
-        r'#\d+\s*\n([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s\.]+?)\s*\(([^)]+)\)\s*\n'
-        r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})[^\n]*\n(.*?)(?=#\d+\s*\n|\Z)',
+    patron_bloque = re.compile(
+        r'(?:\(\s*\n\d+\s*\n\)\s*\n)?#\d+\s*\n([^\n(]+)\(([^)]+)\)\s*\n(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})[^\n]*\n(.*?)(?=(?:\(\s*\n\d+\s*\n\)\s*\n)?#\d+\s*\n[^\n(]+\(|\Z)',
         re.DOTALL
     )
-    for m in patron.finditer(texto):
+    for m in patron_bloque.finditer(historico_text):
+        nombre = m.group(1).strip()
+        cargo = m.group(2).strip()
+        fecha = m.group(3).strip()
         contenido = m.group(4)
-        nota_m = re.search(r'Nota:\s*(.+?)(?:\nAsignado|\nDocumento|\nAnadido|\nEncargo|\Z)', contenido, re.DOTALL)
-        nota = nota_m.group(1).strip()[:300] if nota_m else ""
+        nota_match = re.search(r'Nota:\s*(.+?)(?:\nAsignado|\nDocumento|\nAnadido|\nEncargo|\Z)', contenido, re.DOTALL)
+        nota = nota_match.group(1).strip()[:300] if nota_match else ""
         enviado_a = ""
-        for pat in [r'Asignado ha cambiado de .+? a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)',
-                    r'Documento Enviado a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)']:
-            mm = re.search(pat, contenido)
-            if mm: enviado_a = mm.group(1).strip(); break
+        asig_match = re.search(r'Asignado ha cambiado de .+? a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)', contenido)
+        if asig_match:
+            enviado_a = asig_match.group(1).strip()
+        else:
+            env_match = re.search(r'Documento Enviado a ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\n|$)', contenido)
+            if env_match:
+                enviado_a = env_match.group(1).strip()
         movimientos.append({
-            "nombre": m.group(1).strip(), "cargo": m.group(2).strip(),
-            "fecha": m.group(3).strip(), "nota": nota, "enviado_a": enviado_a
+            "nombre": nombre,
+            "cargo": cargo,
+            "fecha": fecha,
+            "nota": nota,
+            "enviado_a": enviado_a
         })
+
+    # IMPORTANTE: el e-DOC ahora muestra reciente->antiguo.
+    # Invertimos para guardar cronologicamente (antiguo->reciente),
+    # asi el ultimo elemento de la lista es siempre el movimiento mas reciente.
+    movimientos = list(reversed(movimientos))
     return movimientos
 
-# ============================================================
-async def login(page):
-    """Login Apereo CAS 6.x con campos execution y _eventId"""
-    print("Paso 1: Cargando login CAS...")
-    await page.goto(f"{CAS_LOGIN}?service={SERVICE}", timeout=60000, wait_until="networkidle")
-    await page.wait_for_timeout(2000)
-    print(f"URL: {page.url}")
-
-    # Leer campos ocultos requeridos por Apereo CAS
-    execution = await page.get_attribute('input[name="execution"]', 'value') or ""
-    event_id  = await page.get_attribute('input[name="_eventId"]', 'value') or "submit"
-    print(f"execution: {execution[:30]}... eventId: {event_id}")
-
-    # Llenar usuario y contraseña
-    # Apereo CAS usa 'username' y 'password' en español: puede ser 'username' igual
-    await page.fill('input[name="username"]', USUARIO)
-    await page.fill('input[name="password"]', CONTRASENA)
-    await page.wait_for_timeout(500)
-
-    # Debug: ver qué inputs hay en el formulario
-    inputs = await page.eval_on_selector_all('input', 'els => els.map(e => ({name:e.name,type:e.type,value:e.value.substring(0,20)}))')
-    print(f"Inputs del form: {inputs}")
-
-    # Submit
-    print("Paso 2: Enviando formulario...")
-    await page.click('button[name="submitBtn"], input[name="submitBtn"], button[type="submit"], input[type="submit"]')
-    await page.wait_for_load_state("networkidle")
-    await page.wait_for_timeout(5000)
-    print(f"URL post-submit: {page.url}")
-
-    texto = await page.inner_text("body")
-    print(f"Body[0:200]: {texto[:200].replace(chr(10),' ')}")
-
-    if "egobedoc" not in page.url:
-        raise Exception(f"Login fallido. URL: {page.url}")
-
-    print("Login OK")
-
-async def extraer_lista_seccion(page, seccion, url):
-    numeros = []
-    vistos  = set()
-    pagina  = 1
-
-    while True:
-        sep  = '&' if '?' in url else '?'
-        purl = f"{url}{sep}page={pagina}"
-        print(f"  [{seccion}] pag {pagina} -> {purl}")
-
-        await page.goto(purl, timeout=60000, wait_until="networkidle")
-        await page.wait_for_timeout(4000)
-
-        url_actual = page.url
-        texto      = await page.inner_text("body")
-        contenido  = await page.content()
-
-        print(f"  URL actual: {url_actual}")
-        print(f"  Body[0:200]: {texto[:200].replace(chr(10),' ')}")
-
-        # Si nos redirigió al login, session expiró
-        if "cas/login" in url_actual or "Enter Username" in texto:
-            print(f"  SESION EXPIRADA - redirigido al login")
-            break
-
-        # Buscar números de trámite de 5-8 dígitos
-        nums = re.findall(r'\b(\d{5,8})\b', texto)
-        # Filtrar números que parecen años, IPs, etc.
-        nums = [n for n in nums if not n.startswith('20') or len(n) > 4]
-        nums_href = re.findall(r'/issues/(\d+)', contenido)
-        nums_data = re.findall(r'data-id=["\'](\d{5,8})["\']', contenido)
-
-        todos  = list(dict.fromkeys(nums_href + nums_data + nums))
-        nuevos = [n for n in todos if n not in vistos]
-
-        print(f"  Encontrados: href={len(nums_href)} data={len(nums_data)} texto={len(nums)} nuevos={len(nuevos)}")
-
-        if not nuevos:
-            break
-
-        for n in nuevos:
-            vistos.add(n)
-            numeros.append({"numero": n, "seccion": seccion, "descripcion": ""})
-
-        print(f"  [{seccion}] pag {pagina}: {len(nuevos)} nuevos (total {len(numeros)})")
-
-        if f'page={pagina+1}' not in contenido and 'rel="next"' not in contenido:
-            break
-        pagina += 1
-        await page.wait_for_timeout(1000)
-
-    print(f"  [{seccion}] TOTAL: {len(numeros)}")
-    return numeros
-
-async def extraer_detalle(page, numero, seccion):
-    r = {"numero": numero, "seccion": seccion, "descripcion": "",
-         "estado_edoc": "", "movimientos": [], "horas_sin_movimiento": 0,
-         "tiempo_texto": "—", "ultimo_movimiento": None, "error": None}
+async def extraer_datos(page, numero):
+    resultado = {
+        "numero": numero,
+        "asunto": "",
+        "estado": "",
+        "movimientos": [],
+        "hijos": [],
+        "error": None
+    }
     try:
-        await page.goto(f"{BASE_URL}/issues/{numero}", timeout=60000, wait_until="networkidle")
-        await page.wait_for_timeout(2000)
-        for _ in range(5):
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_timeout(600)
+        url = BASE_URL + numero
+        # Carga la pagina y espera que este estable
+        await page.goto(url, wait_until="networkidle")
+        # Espera adicional para que cargue el contenido dinamico
+        await page.wait_for_timeout(3000)
+        # Ya NO se necesita scroll: el e-DOC ahora muestra los movimientos
+        # mas recientes PRIMERO, por lo que estan visibles desde el inicio.
         texto = await page.inner_text("body")
-        m = re.search(r"Asunto:\s*(.+?)(?:\n)", texto)
-        if m: r["descripcion"] = m.group(1).strip()
-        m = re.search(r"Estado:\s*(\w[\w\s]*?)(?:\n)", texto)
-        if m: r["estado_edoc"] = m.group(1).strip()
-        idx = max(texto.find("Historico"), texto.find("Hist"))
-        if idx > 0:
-            r["movimientos"] = extraer_movimientos(texto[idx:])
-        if r["movimientos"]:
-            u = r["movimientos"][-1]
-            h, t = calcular_tiempo(u["fecha"])
-            r["horas_sin_movimiento"] = round(h, 2) if h else 0
-            r["tiempo_texto"] = t
-            r["ultimo_movimiento"] = u
+
+        asunto_match = re.search(r"Asunto:\s*(.+?)(?:\n)", texto)
+        if asunto_match:
+            resultado["asunto"] = asunto_match.group(1).strip()
+
+        estado_match = re.search(r"Estado:\s*(\w+)", texto)
+        if estado_match:
+            resultado["estado"] = estado_match.group(1).strip()
+
+        idx_hijos = texto.find("Trámite/s hijos")
+        if idx_hijos == -1:
+            idx_hijos = texto.find("Tramite/s hijos")
+        idx_historico = texto.find("Histórico")
+        if idx_historico == -1:
+            idx_historico = texto.find("Historico")
+
+        if idx_hijos > 0 and idx_historico > idx_hijos:
+            seccion_hijos = texto[idx_hijos:idx_historico]
+            patron = re.compile(
+                r'\(\s*\n(\d+)\s*\n\)\s*\n.*?(Nuevo|En proceso|Aprobado|Rechazado|Cerrado|Firmado|Enviado|Respuesta|Archivado)\s*\n(\d{4}-\d{2}-\d{2})',
+                re.DOTALL
+            )
+            for match in patron.finditer(seccion_hijos):
+                num_hijo = match.group(1).strip()
+                estado_hijo = match.group(2).strip()
+                fecha_hijo = match.group(3).strip()
+                horas, tiempo_texto = calcular_tiempo(fecha_hijo)
+                resultado["hijos"].append({
+                    "numero_memorando": f"#{num_hijo}",
+                    "estado": estado_hijo,
+                    "fecha_movimiento": fecha_hijo,
+                    "horas_transcurridas": horas,
+                    "tiempo_texto": tiempo_texto,
+                    "en_alerta": horas is not None and horas >= HORAS_ALERTA
+                })
+
+        if idx_historico > 0:
+            historico_text = texto[idx_historico:]
+            movimientos = extraer_movimientos(historico_text)
+            resultado["movimientos"] = movimientos  # Todos, orden cronologico
+
     except Exception as e:
-        r["error"] = str(e)
-    return r
+        resultado["error"] = str(e)
+    return resultado
 
-# ============================================================
 async def ejecutar():
-    print(f"\n{'='*60}\nINICIO: {datetime.now()}\n{'='*60}\n")
-    if not USUARIO or not CONTRASENA:
-        print("ERROR: Credenciales no configuradas"); return
-
+    tramites = leer_tramites_entrada()
+    if not tramites:
+        return
+    print(f"\n{'='*55}")
+    print(f"INICIO: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Tramites a procesar: {len(tramites)}")
+    print(f"{'='*55}\n")
+    todos = []
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
-            args=["--ignore-certificate-errors","--no-sandbox",
-                  "--disable-setuid-sandbox","--disable-dev-shm-usage"]
+            args=["--ignore-certificate-errors", "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         )
-        context = await browser.new_context(
-            ignore_https_errors=True,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
-        )
+        context = await browser.new_context(ignore_https_errors=True)
         page = await context.new_page()
-
-        await login(page)
-
-        print("\nFASE 1 — Descubriendo tramites...\n")
-        todos  = []
-        vistos = set()
-        for sec, url in SECCIONES.items():
-            items = await extraer_lista_seccion(page, sec, url)
-            for item in items:
-                if item["numero"] not in vistos:
-                    vistos.add(item["numero"])
-                    todos.append(item)
-
-        print(f"\nTotal descubiertos: {len(todos)}\n")
-
-        print("FASE 2 — Detalle de cada tramite...\n")
-        detalles = []
-        alertas  = []
-        for i, item in enumerate(todos, 1):
-            print(f"[{i}/{len(todos)}] #{item['numero']}...")
-            d = await extraer_detalle(page, item["numero"], item["seccion"])
-            if not d["error"] and d["movimientos"]:
-                u = d["movimientos"][-1]
-                print(f"  OK {len(d['movimientos'])} movs | {d['tiempo_texto']}")
-                if d["horas_sin_movimiento"] >= HORAS_ALERTA:
-                    alertas.append({
-                        "tramite": item["numero"], "seccion": item["seccion"],
-                        "descripcion": d["descripcion"],
-                        "responsable_actual": u.get("enviado_a") or u["nombre"],
-                        "cargo": u["cargo"], "desde_cuando": u["fecha"],
-                        "nota": u["nota"], "horas": round(d["horas_sin_movimiento"],1)
-                    })
-            detalles.append(d)
-
+        print("Iniciando sesion...")
+        await page.goto(LOGIN_URL)
+        await page.wait_for_load_state("networkidle")
+        await page.fill('input[name="username"]', USUARIO)
+        await page.fill('input[name="password"]', CONTRASENA)
+        await page.click('input[type="submit"], button[type="submit"]')
+        await page.wait_for_load_state("networkidle")
+        print("Sesion iniciada\n")
+        for i, t in enumerate(tramites, 1):
+            print(f"[{i}/{len(tramites)}] Tramite #{t['numero']}...")
+            datos = await extraer_datos(page, t["numero"])
+            datos["descripcion_entrada"] = t["descripcion"]
+            todos.append(datos)
+            if datos["error"]:
+                print(f"   AVISO: {datos['error']}")
+            else:
+                movs = datos["movimientos"]
+                if movs:
+                    # movs[-1] es el mas reciente (orden cronologico)
+                    print(f"   OK | Movimientos: {len(movs)} | Ultimo: {movs[-1]['nombre']} -> {movs[-1]['enviado_a']}")
+                else:
+                    print(f"   SIN MOVIMIENTOS detectados")
         await browser.close()
 
-    with open(ARCHIVO_JSON, "w", encoding="utf-8") as f:
-        json.dump({"timestamp": datetime.now().isoformat(), "total": len(detalles), "tramites": detalles}, f, ensure_ascii=False, indent=2)
-    print(f"\nOK {ARCHIVO_JSON}: {len(detalles)} tramites")
+    # Construir resumen de tramites para JSON
+    tramites_json = []
+    alertas_json = []
+    for datos in todos:
+        movs = datos.get("movimientos", [])
+        # movs esta en orden cronologico: el ultimo es el mas reciente
+        ultimo = movs[-1] if movs else None
+        horas_ult, tiempo_txt = calcular_tiempo(ultimo["fecha"]) if ultimo else (None, "")
+        en_alerta = horas_ult is not None and horas_ult >= HORAS_ALERTA
 
+        # Detectar si esta archivado
+        archivado = False
+        quien_archivo = ""
+        if movs:
+            for mov in reversed(movs):
+                if "Archivado" in mov.get("nota", "") or "archivado" in mov.get("nota", "").lower():
+                    archivado = True
+                    quien_archivo = mov["nombre"]
+                    break
+
+        t_info = {
+            "numero": datos["numero"],
+            "descripcion": datos.get("descripcion_entrada", ""),
+            "estado_edoc": datos.get("estado", ""),
+            "en_alerta": en_alerta,
+            "archivado": archivado,
+            "quien_archivo": quien_archivo,
+            "responsable_previo": movs[-2]["nombre"] if len(movs) >= 2 else "",
+            "horas_sin_movimiento": round(horas_ult, 1) if horas_ult else None,
+            "tiempo_texto": tiempo_txt,
+            "ultimo_movimiento": {
+                "nombre": ultimo["nombre"],
+                "cargo": ultimo["cargo"],
+                "fecha": ultimo["fecha"],
+                "nota": ultimo["nota"],
+                "enviado_a": ultimo["enviado_a"]
+            } if ultimo else None,
+            "movimientos": movs
+        }
+        tramites_json.append(t_info)
+
+        if en_alerta:
+            alertas_json.append({
+                "tramite": datos["numero"],
+                "descripcion": datos.get("descripcion_entrada", ""),
+                "quien_envio": ultimo["nombre"],
+                "responsable_actual": ultimo["enviado_a"],
+                "cargo": ultimo["cargo"],
+                "desde_cuando": ultimo["fecha"],
+                "nota": ultimo["nota"],
+                "horas": round(horas_ult, 1)
+            })
+
+    # Guardar JSON completo de tramites
+    payload_todos = {
+        "timestamp": datetime.now().isoformat(),
+        "total": len(tramites_json),
+        "tramites": tramites_json
+    }
+    with open("tramites_todos.json", "w", encoding="utf-8") as f:
+        json.dump(payload_todos, f, ensure_ascii=False, indent=2)
+    print(f"tramites_todos.json guardado ({len(tramites_json)} tramites)")
+
+    # Guardar JSON de alertas
+    payload_alertas = {
+        "timestamp": datetime.now().isoformat(),
+        "total_alertas": len(alertas_json),
+        "alertas": alertas_json,
+        "mensaje_resumen": (
+            f"ALERTA TRAMITES - {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+            f"Se encontraron {len(alertas_json)} tramite(s) sin movimiento por mas de {HORAS_ALERTA}h."
+        ) if alertas_json else "Sin alertas activas."
+    }
     with open(ARCHIVO_ALERTAS, "w", encoding="utf-8") as f:
-        json.dump({"timestamp": datetime.now().isoformat(), "total_alertas": len(alertas), "alertas": alertas}, f, ensure_ascii=False, indent=2)
-    print(f"OK {ARCHIVO_ALERTAS}: {len(alertas)} alertas")
-    print(f"\nCOMPLETADO: {datetime.now()}\n")
+        json.dump(payload_alertas, f, ensure_ascii=False, indent=2)
+    print(f"alertas.json guardado ({len(alertas_json)} alertas)")
+    print(f"COMPLETADO: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+    # Subir a GitHub automaticamente
+    try:
+        import subprocess
+        carpeta = "C:\\MonitoreoTramites"
+        msg = f"Actualizacion automatica {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        subprocess.run(["git", "add", "tramites_todos.json", "alertas.json"], cwd=carpeta, check=True)
+        subprocess.run(["git", "commit", "-m", msg], cwd=carpeta, check=True)
+        subprocess.run(["git", "push"], cwd=carpeta, check=True)
+        print("GitHub actualizado correctamente")
+    except subprocess.CalledProcessError as e:
+        print(f"Aviso GitHub: {e}")
+    except Exception as e:
+        print(f"Error al subir a GitHub: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(ejecutar())
